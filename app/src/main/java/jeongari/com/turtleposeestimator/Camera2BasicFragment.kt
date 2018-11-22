@@ -634,7 +634,7 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
       return
     }
     val bitmap = textureView!!.getBitmap(classifier!!.imageSizeX, classifier!!.imageSizeY)
-    var resizedBitmap = Bitmap.createScaledBitmap(bitmap,256,256,false)
+    val resizedBitmap = Bitmap.createScaledBitmap(bitmap,256,256,false)
     var observable : Observable<String> = Observable.just("")
     var textToShow : String = ""
     observable.subscribeOn(Schedulers.single())
@@ -645,8 +645,6 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
               //drawView?.setDrawPoint(classifier?.mPrintPointArray!!, 0.25f)
             }.map {
               showToast(textToShow+"ms")
-              resizedBitmap.recycle()
-              Log.d("Bitmap : ", "resized Bitmap recycled")
             }.subscribe()
   }
 
