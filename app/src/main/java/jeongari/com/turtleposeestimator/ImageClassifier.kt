@@ -28,8 +28,8 @@ import org.tensorflow.lite.Interpreter
 import java.io.BufferedReader
 import java.io.FileInputStream
 import java.io.IOException
-import java.io.InputStreamReader
 import java.lang.Long
+import java.io.InputStreamReader
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
@@ -62,6 +62,8 @@ internal constructor(
   /** A ByteBuffer to hold image data, to be feed into Tensorflow Lite as inputs.  */
   protected var imgData: ByteBuffer? = null
 
+  var timeInterval : String = ""
+
   var mPrintPointArray: Array<FloatArray>? = null
 
   init {
@@ -79,12 +81,11 @@ internal constructor(
   }
 
   /** Classifies a frame from the preview stream.  */
-  public fun classifyFrame(bitmap: Bitmap): String {
+  public fun classifyFrame(bitmap: Bitmap){
     if (tflite == null) {
       Log.e(TAG, "Image classifier has not been initialized; Skipped.")
-      return "Uninitialized Classifier."
+      timeInterval = "Uninitialized Classifier."
     }
-    var timeInterval : String = ""
     var observable : Observable<String> = Observable.just(timeInterval)
 
     observable.subscribeOn(Schedulers.single())
@@ -98,12 +99,7 @@ internal constructor(
               val endTime = SystemClock.uptimeMillis()
               Log.d(TAG, "Timecost to run model inference: " + Long.toString(endTime - startTime))
               timeInterval = Long.toString(endTime - startTime)
-            }.map{
-              Log.d(TAG, "resized Bitmap recycled")
-              bitmap.recycle()
             }.subscribe()
-
-    return timeInterval + "ms"
   }
 
 
@@ -136,16 +132,21 @@ internal constructor(
     var pixel = 0
     val startTime = SystemClock.uptimeMillis()
     Log.d(TAG, "버퍼 넘실넘실 시작 시간"+ startTime.toString())
-    for (i in 0 until imageSizeX) {
-      for (j in 0 until imageSizeY) {
-        val v = intValues[pixel++]
-        addPixelValue(v)
-      }
-    }
+    var observable : Observable<String> = Observable.just("")
+    observable.subscribeOn(Schedulers.io())
+            .map {
+              for (i in 0 until imageSizeX) {
+                for (j in 0 until imageSizeY) {
+                  val v = intValues[pixel++]
+                  addPixelValue(v)
+                }
+              }
+            }.subscribe()
     val endTime = SystemClock.uptimeMillis()
+    Log.d(TAG, "버퍼 넘실넘실 끝난 시간"+ endTime.toString())
     Log.d(
         TAG,
-        "Timecost to put values into ByteBuffer: " + Long.toString(endTime - startTime)
+        "버퍼 넘실넘실 소요시간" + Long.toString(endTime - startTime)
     )
     return bitmap
   }
@@ -198,7 +199,7 @@ internal constructor(
   companion object {
 
     /** Tag for the [Log].  */
-    private const val TAG = "TfLiteCameraDemo"
+    private const val TAG = "Turtle-Classifier"
 
     /** Number of results to show in the UI.  */
     private const val RESULTS_TO_SHOW = 3

@@ -47,12 +47,13 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
 import android.widget.Toast
+import io.reactivex.Observable
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import jeongari.com.turtleposeestimator.ImageClassifier
+import kotlinx.android.synthetic.main.fragment_camera2_basic.*
 import java.io.IOException
-import java.util.ArrayList
-import java.util.Arrays
-import java.util.Collections
-import java.util.Comparator
+import java.util.*
 import java.util.concurrent.Semaphore
 import java.util.concurrent.TimeUnit
 
@@ -280,7 +281,7 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
       //      classifier = new ImageClassifierQuantizedMobileNet(getActivity());
       classifier = ImageClassifierFloatInception.create(activity)
       if (drawView != null)
-        drawView!!.setImgSize(classifier!!.imageSizeX, classifier!!.imageSizeY)
+        drawview.setImgSize(classifier!!.imageSizeX, classifier!!.imageSizeY)
     } catch (e: IOException) {
       Log.e(TAG, "Failed to initialize an image classifier.", e)
     }
@@ -634,12 +635,19 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
     }
     val bitmap = textureView!!.getBitmap(classifier!!.imageSizeX, classifier!!.imageSizeY)
     var resizedBitmap = Bitmap.createScaledBitmap(bitmap,256,256,false)
-
-    val textToShow = classifier!!.classifyFrame(resizedBitmap)
-
-    //drawView?.setDrawPoint(classifier?.mPrintPointArray!!, 0.25f)
-
-    showToast(textToShow)
+    var observable : Observable<String> = Observable.just("")
+    var textToShow : String = ""
+    observable.subscribeOn(Schedulers.single())
+            .map{
+              classifier!!.classifyFrame(resizedBitmap)
+            }.map {
+              textToShow = classifier?.timeInterval!!
+              //drawView?.setDrawPoint(classifier?.mPrintPointArray!!, 0.25f)
+            }.map {
+              showToast(textToShow+"ms")
+              resizedBitmap.recycle()
+              Log.d("Bitmap : ", "resized Bitmap recycled")
+            }.subscribe()
   }
 
   /**
