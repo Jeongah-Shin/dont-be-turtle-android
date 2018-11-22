@@ -330,7 +330,7 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
       for (cameraId in manager.cameraIdList) {
         val characteristics = manager.getCameraCharacteristics(cameraId)
 
-        // We don't use a front facing camera in this sample.
+        // We don't use a back facing camera in this sample.
         val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
         if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
           continue
@@ -633,12 +633,11 @@ class Camera2BasicFragment : Fragment(), FragmentCompat.OnRequestPermissionsResu
       return
     }
     val bitmap = textureView!!.getBitmap(classifier!!.imageSizeX, classifier!!.imageSizeY)
-    val resizedBitmap = Bitmap.createScaledBitmap(bitmap,256,256,false)
+    var resizedBitmap = Bitmap.createScaledBitmap(bitmap,256,256,false)
 
     val textToShow = classifier!!.classifyFrame(resizedBitmap)
 
     //drawView?.setDrawPoint(classifier?.mPrintPointArray!!, 0.25f)
-    resizedBitmap.recycle()
 
     showToast(textToShow)
   }

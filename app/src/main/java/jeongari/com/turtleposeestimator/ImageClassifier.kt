@@ -20,6 +20,10 @@ import android.graphics.Bitmap
 import android.os.Handler
 import android.os.SystemClock
 import android.util.Log
+import android.util.Log.d
+import io.reactivex.Observable
+import io.reactivex.Scheduler
+import io.reactivex.schedulers.Schedulers
 import org.tensorflow.lite.Interpreter
 import java.io.BufferedReader
 import java.io.FileInputStream
@@ -30,10 +34,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel.MapMode
+import java.util.*
 import java.util.AbstractMap.SimpleEntry
-import java.util.ArrayList
-import java.util.Comparator
-import java.util.PriorityQueue
 
 /**
  * Classifies images with Tensorflow Lite.
@@ -73,6 +75,7 @@ internal constructor(
                     * numBytesPerChannel
     )
     imgData?.order(ByteOrder.nativeOrder())
+    Log.d(TAG, "Allocating imgData ByteBuffer")
   }
 
   /** Classifies a frame from the preview stream.  */
@@ -81,16 +84,26 @@ internal constructor(
       Log.e(TAG, "Image classifier has not been initialized; Skipped.")
       return "Uninitialized Classifier."
     }
-    //TODO : Buffer에 실어보내고, 추론하는 과정 동기화 하기
-    convertBitmapToByteBuffer(bitmap) // min 12 ms ~ max 29 ms
+    var timeInterval : String = ""
+    var observable : Observable<String> = Observable.just(timeInterval)
 
-    val startTime = SystemClock.uptimeMillis()
-    Log.e("추론 시작 시간", startTime.toString())
-    runInference()
-    val endTime = SystemClock.uptimeMillis()
-    Log.d(TAG, "Timecost to run model inference: " + Long.toString(endTime - startTime))
+    observable.subscribeOn(Schedulers.single())
+            .map {
+              convertBitmapToByteBuffer(bitmap)
+            }
+            .map{
+              val startTime = SystemClock.uptimeMillis()
+              Log.d(TAG, "추론 시작 시간" + startTime.toString())
+              runInference()
+              val endTime = SystemClock.uptimeMillis()
+              Log.d(TAG, "Timecost to run model inference: " + Long.toString(endTime - startTime))
+              timeInterval = Long.toString(endTime - startTime)
+            }.map{
+              Log.d(TAG, "resized Bitmap recycled")
+              bitmap.recycle()
+            }.subscribe()
 
-    return Long.toString(endTime - startTime) + "ms"
+    return timeInterval + "ms"
   }
 
 
@@ -112,16 +125,17 @@ internal constructor(
   }
 
   /** Writes Image data into a `ByteBuffer`.  */
-  private fun convertBitmapToByteBuffer(bitmap: Bitmap) {
+  private fun convertBitmapToByteBuffer(bitmap: Bitmap) : Bitmap {
     if (imgData == null) {
-      return
+      return bitmap
     }
     imgData?.rewind()
+    Log.d(TAG, "imgData ByteBuffer has been rewinded")
     bitmap.getPixels(intValues, 0, bitmap.width, 0, 0, bitmap.width, bitmap.height)
     // Convert the image to floating point.
     var pixel = 0
     val startTime = SystemClock.uptimeMillis()
-    Log.e("버퍼 넘실넘실 시작 시간", startTime.toString())
+    Log.d(TAG, "버퍼 넘실넘실 시작 시간"+ startTime.toString())
     for (i in 0 until imageSizeX) {
       for (j in 0 until imageSizeY) {
         val v = intValues[pixel++]
@@ -133,6 +147,7 @@ internal constructor(
         TAG,
         "Timecost to put values into ByteBuffer: " + Long.toString(endTime - startTime)
     )
+    return bitmap
   }
 
   /**
